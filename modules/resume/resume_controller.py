@@ -1,6 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer
-from flask_login import current_user
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from dependency import get_db
 from .resume_service import (
