@@ -30,6 +30,12 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 ALLOWED_TYPES = ["image/jpeg", "image/png", "image/jpg", "application/pdf"]
 
 
+# keep alive api
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
+
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     if file.content_type not in ALLOWED_TYPES:
