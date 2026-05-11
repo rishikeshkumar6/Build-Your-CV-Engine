@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: build-your-cv-engine
+    runtime: python
+    pythonVersion: "3.11.9"
+    buildCommand: pip install -r requirements.txt --prefer-binary
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
