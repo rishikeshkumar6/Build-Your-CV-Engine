@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP, DateTime
+from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, TIMESTAMP, DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -13,7 +13,10 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, nullable=False, unique=True)
-    password = Column(String, nullable=False)
+    password = Column(String, nullable=True)
+    full_name = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+    auth_provider = Column(String, nullable=True)  # e.g., 'google', 'facebook'
     # UUID (recommended for public identifiers)
     uuid = Column(UUID(as_uuid=True), default=uuid.uuid4, unique=True, nullable=False)
     # Timestamps

@@ -1,7 +1,15 @@
+from concurrent.futures import ThreadPoolExecutor
+import sys
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
+from .resume_schema import Ai_ResumeData as ResumeData
+from .resume_templates import TEMPLATE_BUILDERS, build_classic_pdf
+import io
 from dependency import get_db
+from pypdf import PdfWriter
 from .resume_service import (
     create_resume,
     get_resume,
@@ -24,6 +32,58 @@ def create(
     current_user: dict = Depends(get_current_user),
 ):
     return create_resume(db, resume, current_user)
+
+
+# ── Endpoint ───────────────────────────────────────────────────────────────────
+
+
+@resumeRouter.post("/api/download-resume")
+async def download_resume(data: ResumeData):
+    builder = TEMPLATE_BUILDERS.get(data.template, build_classic_pdf)
+
+    try:
+        # Build PDF with ReportLab
+        pdf_bytes = builder(data)
+
+        # Pass through PdfWriter to normalize, compress, and finalize the PDF
+        reader_buf = io.BytesIO(pdf_bytes)
+        from pypdf import PdfReader
+
+        reader = PdfReader(reader_buf)
+        writer = PdfWriter()
+
+        for page in reader.pages:
+            writer.add_page(page)
+
+        # Optional metadata
+        writer.add_metadata(
+            {
+                "/Author": data.name,
+                "/Title": f"{data.name} - Resume",
+                "/Subject": "Resume",
+                "/Creator": "Resume Builder",
+            }
+        )
+
+        # Write final PDF
+        output_buf = io.BytesIO()
+        writer.write(output_buf)
+        output_buf.seek(0)
+        final_bytes = output_buf.read()
+
+    except Exception as e:
+        print(f"Error generating PDF: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
+
+    filename = f"{data.name.replace(' ', '_')}_Resume.pdf"
+    return StreamingResponse(
+        io.BytesIO(final_bytes),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(final_bytes)),
+        },
+    )
 
 
 # get all resume route

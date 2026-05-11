@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
+from flask_login import current_user
 from sqlalchemy.orm import Session
 from dependency import get_db
 from schemas import (
@@ -15,10 +16,12 @@ from modules.user.user_service import (
     create_user,
     get_all_users,
     get_single_users,
+    oauth_login_service,
     update_single_user,
     delete_user,
     login_user,
     get_current_user,
+    get_user_list,
 )
 from typing import List
 
@@ -43,6 +46,20 @@ def get_all(
     return get_all_users(db, current_user)
 
 
+@router.get("/getall", response_model=GetUserResponse)
+def get_all(
+    db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)
+):
+    try:
+        return get_user_list(db, current_user)
+    except Exception as e:
+        print("error message", e)
+        raise HTTPException(
+            status_code=500,
+            detail="An internal server error occurred. Please try again later.",
+        )
+
+
 @router.get("/get/{user_id}", response_model=UserResponse)
 def get_all(user_id: int, db: Session = Depends(get_db)):
     return get_single_users(db, user_id)
@@ -56,3 +73,15 @@ def update_user(user: UserUpdate, db: Session = Depends(get_db)):
 @router.delete("/delete", response_model=UserRegsiterResponse)
 def update_user(user: UserUpdate, db: Session = Depends(get_db)):
     return delete_user(db, user)
+
+
+@router.post("/oauth_login", status_code=201)
+def oauth_login(payload: UserCreate, db: Session = Depends(get_db)):
+    try:
+        return oauth_login_service(db, payload)
+    except Exception as e:
+        print("error message", e)
+        raise HTTPException(
+            status_code=500,
+            detail="An internal server error occurred. Please try again later.",
+        )

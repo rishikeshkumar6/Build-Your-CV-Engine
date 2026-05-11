@@ -111,83 +111,107 @@ def create_resume(db: Session, payload: Resume_Validation, current_user: dict):
 
 # fetch all resumes with nested experiences, responsibilities, projects, education
 def get_all_resume(db: Session, current_user: dict):
-    client_id = current_user["id"]
-    print("client_id---->", client_id)
-    resume = (
-        db.query(Resume)
-        .filter(Resume.client_id == client_id)
-        .options(
-            joinedload(Resume.experiences).joinedload(Experience.responsibilities),
-            joinedload(Resume.projects),
-            joinedload(Resume.education),
+    try:
+        print("current_user---->", current_user)
+
+        # Safely get client_id
+        client_id = current_user.get("id") or current_user.get("user_id")
+
+        print("client_id---->", client_id)
+
+        if not client_id:
+            raise HTTPException(status_code=400, detail="User ID not found")
+
+        resume = (
+            db.query(Resume)
+            .filter(Resume.client_id == client_id)
+            .options(
+                joinedload(Resume.experiences).joinedload(Experience.responsibilities),
+                joinedload(Resume.projects),
+                joinedload(Resume.education),
+            )
+            .filter(Resume.is_deleted == False)
+            .all()
         )
-        .filter(Resume.is_deleted == False)
-        .all()
-    )
-    fetch_resume_list = []
-    for res in resume:
-        exp_list = []
-        for exp in res.experiences:
-            resp_list = [resp.text for resp in exp.responsibilities]
-            exp_list.append(
+
+        # If no resume found
+        if not resume:
+            raise HTTPException(status_code=404, detail="No resume found")
+
+        fetch_resume_list = []
+
+        for res in resume:
+            exp_list = []
+
+            for exp in res.experiences:
+                resp_list = [resp.text for resp in exp.responsibilities]
+
+                exp_list.append(
+                    {
+                        "position": exp.position,
+                        "company": exp.company,
+                        "startDate": exp.startDate,
+                        "endDate": exp.endDate,
+                        "techStack": exp.techStack,
+                        "responsibilities": resp_list,
+                    }
+                )
+
+            proj_list = [
                 {
-                    "position": exp.position,
-                    "company": exp.company,
-                    "startDate": exp.startDate,
-                    "endDate": exp.endDate,
-                    "techStack": exp.techStack,
-                    "responsibilities": resp_list,
+                    "name": proj.name,
+                    "description": proj.description,
+                    "techStack": proj.techStack,
+                    "github": proj.github,
+                    "live": proj.live,
+                }
+                for proj in res.projects
+            ]
+
+            edu_list = [
+                {
+                    "degree": edu.degree,
+                    "institution": edu.institution,
+                    "startYear": edu.startYear,
+                    "endYear": edu.endYear,
+                }
+                for edu in res.education
+            ]
+
+            fetch_resume_list.append(
+                {
+                    "id": res.id,
+                    "full_name": res.fullName,
+                    "email": res.email,
+                    "summary": res.summary,
+                    "experiences": exp_list,
+                    "projects": proj_list,
+                    "education": edu_list,
+                    "frontend": res.frontend,
+                    "backend": res.backend,
+                    "database": res.database,
+                    "other": res.other,
+                    "title": res.title,
+                    "github": res.github,
+                    "linkedin": res.linkedin,
+                    "portfolio": res.portfolio,
                 }
             )
 
-        proj_list = [
-            {
-                "name": proj.name,
-                "description": proj.description,
-                "techStack": proj.techStack,
-                "github": proj.github,
-                "live": proj.live,
-            }
-            for proj in res.projects
-        ]
+        return {
+            "message": "Resume fetched successfully",
+            "data": fetch_resume_list,
+            "statusCode": 200,
+        }
 
-        edu_list = [
-            {
-                "degree": edu.degree,
-                "institution": edu.institution,
-                "startYear": edu.startYear,
-                "endYear": edu.endYear,
-            }
-            for edu in res.education
-        ]
+    except HTTPException as http_error:
+        print("HTTP Exception --->", str(http_error.detail))
+        raise http_error
 
-        fetch_resume_list.append(
-            {
-                "id": res.id,
-                "full_name": res.fullName,
-                "email": res.email,
-                "summary": res.summary,
-                "experiences": exp_list,
-                "projects": proj_list,
-                "education": edu_list,
-                "frontend": res.frontend,
-                "backend": res.backend,
-                "database": res.database,
-                "other": res.other,
-                "title": res.title,
-                "github": res.github,
-                "linkedin": res.linkedin,
-                "portfolio": res.portfolio,
-            }
-        )
-    if not resume:
-        raise HTTPException(status_code=404, detail="Resume not found")
+    except Exception as e:
+        print("Resume Fetch Error --->", str(e))
 
-    return {
-        "message": "Resume fetched successfully",
-        "data": fetch_resume_list,
-        "statusCode": 200,
-    }
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
 # fetch resume by id with nested experiences, responsibilities, projects, education

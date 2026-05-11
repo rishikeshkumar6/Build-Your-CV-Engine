@@ -3,7 +3,6 @@ from passlib.context import CryptContext
 from jose import jwt, JWTError, ExpiredSignatureError
 from fastapi import HTTPException, status
 
-
 SECRET_KEY = "testing@123"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -36,8 +35,9 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
 
 def decode_access_token(token: str):
     try:
+        print("Decoding token:", token)
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        print("payload---->", payload)
+        print("payload response---->", payload)
         return payload.get("response")  # or "sub" if you're using standard
     except ExpiredSignatureError:
         raise HTTPException(
@@ -49,5 +49,12 @@ def decode_access_token(token: str):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except Exception as e:
+        print("Error decoding token:", e)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )

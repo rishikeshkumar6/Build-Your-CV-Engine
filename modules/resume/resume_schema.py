@@ -109,3 +109,39 @@ class GetResumeResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+# ──AI Pydantic models ────────────────────────────────────────────────────────────
+
+
+class Ai_Experience(BaseModel):
+    title: str
+    company: str
+    duration: str
+    description: str
+
+
+class Ai_Education(BaseModel):
+    degree: str
+    institution: str
+    year: str
+
+
+class Ai_Project(BaseModel):
+    name: str
+    description: str
+    technologies: str
+
+
+class Ai_ResumeData(BaseModel):
+    name: str
+    email: Optional[str] = ""
+    phone: Optional[str] = ""
+    location: Optional[str] = ""
+    summary: Optional[str] = ""
+    skills: List[str] = []
+    experience: List[Ai_Experience] = []
+    education: List[Ai_Education] = []
+    projects: List[Ai_Project] = []
+    certifications: Optional[List[str]] = []
+    template: Optional[str] = "classic"  # classic | modern | minimal

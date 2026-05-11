@@ -4,8 +4,10 @@ from typing import Optional, Any
 
 
 class UserCreate(BaseModel):
+    full_name: str
     email: EmailStr
-    password: str
+    password: Optional[str] = None
+    auth_provider: Optional[str] = None  # e.g., 'google', 'facebook'
 
     # @field_validator("name")
     # def validate_name(cls, v):
