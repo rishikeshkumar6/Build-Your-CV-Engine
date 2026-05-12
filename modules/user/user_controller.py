@@ -20,6 +20,7 @@ from modules.user.user_service import (
     get_current_user,
     get_user_list,
 )
+from typing import List
 
 router = APIRouter(tags=["user"], prefix="/user")
 

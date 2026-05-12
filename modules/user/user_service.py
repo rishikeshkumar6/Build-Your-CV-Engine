@@ -4,7 +4,6 @@ from modules import User
 from psycopg2 import DatabaseError as DataBaseError
 from schemas import UserCreate, UserUpdate
 from dependency import oauth2_scheme
-from modules.user.user_controller import oauth2_scheme
 from sqlalchemy import or_, text
 from auth import (
     hash_password,

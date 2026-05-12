@@ -12,8 +12,6 @@ from modules.chat import chat_controller
 from modules.resume.ai_resume_controller import ai_resume_router
 from config import origin
 import os
-from fastapi.security import OAuth2PasswordBearer
-from modules.user.user_service import get_current_user
 from database import engine, Base
 import cloudinary.uploader
 
@@ -35,7 +33,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
