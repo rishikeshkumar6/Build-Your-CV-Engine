@@ -211,7 +211,7 @@ def oauth_login_service(db: Session, payload: UserCreate):
         if existing_user:
             token = create_access_token(
                 data={
-                    "user_id": existing_user.id,
+                    "id": existing_user.id,
                     "email": existing_user.email,
                 }
             )

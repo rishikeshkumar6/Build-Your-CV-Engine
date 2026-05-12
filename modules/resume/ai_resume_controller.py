@@ -214,7 +214,7 @@ async def analyze_resume(
     db: Session = Depends(get_db),  # ← add db here
     current_user: dict = Depends(get_current_user),
 ):
-    client_id = current_user["id"]
+    client_id = current_user.get("id") or current_user.get("user_id")
     print("Client ID for resume analysis:", client_id)
 
     content = await file.read()
@@ -326,6 +326,7 @@ def get_my_resumes(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    current_user_id = current_user.get("id") or current_user.get("user_id")
     try:
         resumes = (
             db.query(Ai_Resume)
@@ -337,7 +338,7 @@ def get_my_resumes(
                 joinedload(Ai_Resume.certifications),
                 joinedload(Ai_Resume.improvement),
             )
-            .filter(Ai_Resume.client_id == current_user["user_id"])
+            .filter(Ai_Resume.client_id == current_user_id)
             .all()
         )
 
@@ -372,10 +373,11 @@ def get_resume(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
+    current_user_id = current_user.get("id") or current_user.get("user_id")
     resume = _load_resume(resume_id, db)
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
-    if resume.client_id != current_user["id"]:
+    if resume.client_id != current_user_id:
         raise HTTPException(status_code=403, detail="Access denied")
     return resume
 
