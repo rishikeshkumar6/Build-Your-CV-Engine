@@ -3,8 +3,6 @@ from fastapi import (
     File,
     UploadFile,
     HTTPException,
-    WebSocket,
-    WebSocketDisconnect,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from modules.user import user_controller
@@ -14,9 +12,7 @@ from modules.chat import chat_controller
 from modules.resume.ai_resume_controller import ai_resume_router
 from config import origin
 import os
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-import modules
-import shutil
+from fastapi.security import OAuth2PasswordBearer
 from modules.user.user_service import get_current_user
 from database import engine, Base
 import cloudinary.uploader

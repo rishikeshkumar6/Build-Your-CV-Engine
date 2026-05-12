@@ -1,11 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, Depends
-from fastapi.security import OAuth2PasswordBearer
-from modules import User, Order
-from schemas import UserCreate, UserUpdate
+from modules import Order
 from datetime import datetime
-from dependency import oauth2_scheme
-from modules.user.user_controller import oauth2_scheme
 
 
 def create_user(db: Session, order: dict):

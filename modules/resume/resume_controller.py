@@ -1,9 +1,5 @@
-from concurrent.futures import ThreadPoolExecutor
-import sys
-import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from .resume_schema import Ai_ResumeData as ResumeData
 from .resume_templates import TEMPLATE_BUILDERS, build_classic_pdf

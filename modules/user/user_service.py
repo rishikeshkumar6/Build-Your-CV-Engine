@@ -1,10 +1,9 @@
-from sqlalchemy.orm import Session, joinedload, load_only
+from sqlalchemy.orm import Session, load_only
 from fastapi import HTTPException, Depends
-from fastapi.security import OAuth2PasswordBearer
-from modules import User, Order, Resume
+from modules import User
 from psycopg2 import DatabaseError as DataBaseError
 from schemas import UserCreate, UserUpdate
-from dependency import oauth2_scheme, get_db
+from dependency import oauth2_scheme
 from modules.user.user_controller import oauth2_scheme
 from sqlalchemy import or_, text
 from auth import (

@@ -25,7 +25,7 @@ from reportlab.platypus import (
     KeepTogether,
     FrameBreak,
 )
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.styles import ParagraphStyle
 
 # ── Color palette ──────────────────────────────────────────────────────────────
 

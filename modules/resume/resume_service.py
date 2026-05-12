@@ -1,12 +1,8 @@
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from fastapi import HTTPException, Depends
-from fastapi.security import OAuth2PasswordBearer
 from modules import Resume, Experience, Education, Responsibility, Project, User
-from schemas import UserCreate, UserUpdate
 from modules.resume.resume_schema import Resume_Validation
-from dependency import oauth2_scheme
-from modules.user.user_controller import oauth2_scheme
 from datetime import datetime, timezone
 
 

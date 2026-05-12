@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from dependency import get_db
 from schemas import (
@@ -10,7 +9,6 @@ from schemas import (
     UserUpdate,
     GetUserResponse,
 )
-from dependency import oauth2_scheme
 from modules.user.user_service import (
     create_user,
     get_all_users,
@@ -22,7 +20,6 @@ from modules.user.user_service import (
     get_current_user,
     get_user_list,
 )
-from typing import List
 
 router = APIRouter(tags=["user"], prefix="/user")
 

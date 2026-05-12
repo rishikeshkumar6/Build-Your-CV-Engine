@@ -3,13 +3,8 @@ from pydantic import (
     EmailStr,
     HttpUrl,
     StringConstraints,
-    validator,
     Field,
-    constr,
-    field_validator,
-    model_validator,
 )
-import re
 from typing import Optional, List, Any
 from datetime import date
 from typing_extensions import Annotated

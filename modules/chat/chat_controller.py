@@ -1,48 +1,25 @@
 from unittest import result
 
 from fastapi import (
-    FastAPI,
-    File,
-    UploadFile,
     HTTPException,
     WebSocket,
     WebSocketDisconnect,
     APIRouter,
     Depends,
-    Form,
 )
-from flask import json
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from dependency import get_db
 from openai import OpenAI
 import os
-from PyPDF2 import PdfReader
-from docx import Document
-from fastapi import UploadFile
-import io
 from .connection_manager import ConnectionManager
 from modules.user.user_service import get_current_user
 from .chat_model import MessageHistory
 from database import SessionLocal
-import httpx
-import pdfplumber
-import pytesseract
-from PIL import Image
-import fitz  # PyMuPDF
-import easyocr
-from pdf2image import convert_from_bytes
 
 manager = ConnectionManager()
 chatRouter = APIRouter(tags=["chat"], prefix="/chat")
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")  # store in .env or secrets
-OCR_API_KEY = os.getenv("OCR_API_KEY")  # Replace with your actual OCR API key
-OCR_API_URL = os.getenv("OCR_API_URL")  # Replace with your actual OCR API endpoint
-GROQ_MODEL = os.getenv("GROQ_MODEL")  # Default to a specific model
-GROQ_API_URL = os.getenv("GROQ_API_URL")
-
 
 # # websocket endpoint
 # @app.websocket("/ws")

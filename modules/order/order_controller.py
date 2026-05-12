@@ -1,5 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import APIRouter, Depends
 from datetime import datetime
 from dependency import get_db
 from sqlalchemy.orm import Session

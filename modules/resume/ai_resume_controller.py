@@ -3,7 +3,6 @@ from openai import OpenAI
 from sqlalchemy.orm import Session, joinedload
 from modules.user.user_service import get_current_user
 import httpx
-import pdfplumber
 from flask import json
 from dependency import get_db
 from .ai_resume_model import (
@@ -16,7 +15,6 @@ from .ai_resume_model import (
     Ai_Improvement,
 )
 import os
-import io
 from .ai_resume_schema import ResumeCreate, ResumeOut, ResumeUpdate
 
 ai_resume_router = APIRouter(prefix="/ai_resumes", tags=["Resumes"])
