@@ -167,6 +167,8 @@ class ResumeUpdate(BaseModel):
     education: Optional[list[EducationCreate]] = None  # singular key
     projects: Optional[list[ProjectCreate]] = None
     certifications: Optional[list[CertificationCreate]] = None
+    languages: Optional[list[str]] = None
+    achievements: Optional[list[str]] = None
 
 
 # ─── ResumeOut ────────────────────────────────────────────────────────────────
@@ -185,6 +187,8 @@ class ResumeOut(BaseModel):
     educations: list[EducationOut] = []
     projects: list[ProjectOut] = []
     certifications: list[CertificationOut] = []
+    languages: list[str] = []
+    achievements: list[str] = []
     improvement: Optional[ImprovementOut] = None
 
     class Config:

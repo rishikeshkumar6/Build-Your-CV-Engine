@@ -139,4 +139,6 @@ class Ai_ResumeData(BaseModel):
     education: List[Ai_Education] = []
     projects: List[Ai_Project] = []
     certifications: Optional[List[str]] = []
+    languages: Optional[List[str]] = []
+    achievements: Optional[List[str]] = []
     template: Optional[str] = "classic"  # classic | modern | minimal

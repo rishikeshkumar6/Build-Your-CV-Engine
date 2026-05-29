@@ -1,3 +1,5 @@
+import re
+
 from fastapi import APIRouter, Depends, File, HTTPException, status, UploadFile
 from openai import OpenAI
 from sqlalchemy.orm import Session, joinedload
@@ -6,6 +8,8 @@ import httpx
 from flask import json
 from dependency import get_db
 from .ai_resume_model import (
+    Ai_Achievements,
+    Ai_Languages,
     Ai_Resume,
     Ai_Skill,
     Ai_Experience,
@@ -41,6 +45,8 @@ def _load_resume(resume_id: int, db: Session) -> Ai_Resume:
             joinedload(Ai_Resume.projects),
             joinedload(Ai_Resume.certifications),
             joinedload(Ai_Resume.improvement),
+            joinedload(Ai_Resume.languages),
+            joinedload(Ai_Resume.achievements),
         )
         .filter(Ai_Resume.id == resume_id)
         .first()
@@ -115,14 +121,37 @@ def _save_resume_to_db(parsed_output: dict, client_id: int, db: Session) -> Ai_R
         if cert_name:
             db.add(Ai_Certification(resume_id=resume.id, name=cert_name))
 
+    for lang in fd.get("languages", []):
+        lang_name = lang if isinstance(lang, str) else lang.get("name", "")
+        if lang_name:
+            db.add(Ai_Languages(resume_id=resume.id, name=lang_name))
+
+    for ach in fd.get("achievements", []):
+        ach_name = ach if isinstance(ach, str) else ach.get("name", "")
+        if ach_name:
+            db.add(Ai_Achievements(resume_id=resume.id, name=ach_name))
+
     # 7. Improvement — from root-level fields
     db.add(
         Ai_Improvement(
             resume_id=resume.id,
             score=parsed_output.get("score"),
+            career_level=parsed_output.get("career_level"),
+            cover_letter_hook=parsed_output.get("cover_letter_hook"),
             strengths=parsed_output.get("strengths"),
             improvements=parsed_output.get("improvements"),
             rewrites=parsed_output.get("rewrites"),
+            score_breakdown=parsed_output.get("score_breakdown"),
+            critical_issues=parsed_output.get("critical_issues"),
+            missing_sections=parsed_output.get("missing_sections"),
+            improved_summary=parsed_output.get("improved_summary"),
+            ats_keywords=parsed_output.get("ats_keywords"),
+            skill_suggestions=parsed_output.get("skill_suggestions"),
+            experience_tips=parsed_output.get("experience_tips"),
+            target_roles=parsed_output.get("target_roles"),
+            industry_fit=parsed_output.get("industry_fit"),
+            action_verbs=parsed_output.get("action_verbs"),
+            linkedin_tips=parsed_output.get("linkedin_tips"),
         )
     )
 
@@ -168,6 +197,41 @@ async def ocr_with_api(file_bytes):
         return ""
 
 
+# ─── AI JSON Repair Helper ───────────────────────────────────────────────
+def _repair_json(raw: str) -> str:
+    """
+    Auto-repair the most common AI JSON mistakes before parsing.
+    """
+    text = raw.strip()
+
+    # 1. Strip markdown fences  ```json ... ```
+    text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\s*```\s*$", "", text)
+    text = text.strip()
+
+    # 2. Fix missing commas between fields:
+    #    "value"          <- no comma
+    #    "next_key": ...
+    text = re.sub(
+        r'(["\d\]\}])\s*\n(\s*")',
+        lambda m: m.group(1) + ",\n" + m.group(2),
+        text,
+    )
+
+    # 3. Fix trailing commas before } or ]
+    text = re.sub(r",\s*([}\]])", r"\1", text)
+
+    # 4. Replace curly/smart quotes with straight quotes
+    text = (
+        text.replace("\u2018", "'")
+        .replace("\u2019", "'")
+        .replace("\u201c", '"')
+        .replace("\u201d", '"')
+    )
+
+    return text
+
+
 # ─── Groq API helper (unchanged) ──────────────────────────────────────────────
 
 
@@ -192,17 +256,30 @@ async def call_groq_api(payload: dict) -> dict:
     except Exception:
         raise HTTPException(500, "Invalid response structure from AI")
 
-    # Strip markdown code fences if present
-    clean = raw_output.strip()
-    if clean.startswith("```"):
-        clean = clean.split("```", 2)[-1] if clean.count("```") >= 2 else clean
-        clean = clean.lstrip("json").strip().rstrip("```").strip()
-
+    # Pass 1: try raw output directly
     try:
-        return json.loads(clean)
-    except Exception:
-        print("RAW OUTPUT:", raw_output)
-        raise HTTPException(500, "Invalid JSON from AI")
+        return json.loads(raw_output)
+    except json.JSONDecodeError:
+        pass
+
+    # Pass 2: repair then parse
+    repaired = _repair_json(raw_output)
+    try:
+        return json.loads(repaired)
+    except json.JSONDecodeError:
+        pass
+
+    # Pass 3: extract outermost { } block and parse
+    match = re.search(r"\{.*\}", repaired, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group())
+        except json.JSONDecodeError:
+            pass
+
+    # Give up with debug info
+    print("RAW OUTPUT (unparseable):\n", raw_output[:3000])
+    raise HTTPException(500, "AI returned malformed JSON. Check server logs.")
 
 
 # ─── POST /ai_resumes/analyze-resume ─────────────────────────────────────────
@@ -236,59 +313,116 @@ async def analyze_resume(
 
     # 🔹 AI Prompt
     prompt = f"""
-    You are an expert ATS system and resume parser. Analyze the resume and return ONLY valid JSON in this EXACT format with no extra text:
-
-    {{
-      "score": <number 0-100>,
-      "strengths": [<5 strings>],
-      "improvements": [<5 strings>],
-      "rewrites": {{
-        "experience": [<2 improved bullet strings>],
-        "frontend": [<2 improved bullet strings>],
-        "project": [<2 improved bullet strings>]
-      }},
-      "form_data": {{
-        "name": "<full name>",
-        "email": "<email address>",
-        "phone": "<phone number>",
-        "location": "<city, country>",
-        "summary": "<professional summary 2-3 sentences>",
-        "skills": [<list of skill strings>],
-        "experience": [
-          {{
-            "title": "<job title>",
-            "company": "<company name>",
-            "duration": "<e.g. Jan 2021 - Present>",
-            "description": "<key responsibilities and achievements>"
-          }}
-        ],
-        "education": [
-          {{
-            "degree": "<degree name>",
-            "institution": "<university/college name>",
-            "year": "<graduation year>"
-          }}
-        ],
-        "projects": [
-          {{
-            "name": "<project name>",
-            "description": "<what it does>",
-            "technologies": "<tech stack used>"
-          }}
-        ],
-        "certifications": [<list of certification strings, empty list if none>]
+    You are an expert ATS system, resume parser, and career coach. Analyze the resume thoroughly and return ONLY valid JSON in this EXACT format with no extra text:
+ 
+{{
+  "score": <number 0-100>,
+ 
+  "score_breakdown": {{
+    "ats_compatibility": <number 0-100>,
+    "content_quality":   <number 0-100>,
+    "keyword_density":   <number 0-100>,
+    "formatting":        <number 0-100>,
+    "impact_language":   <number 0-100>
+  }},
+ 
+  "strengths": [<5 strings — what the candidate does well>],
+ 
+  "improvements": [<5 strings — high-priority fixes needed>],
+ 
+  "quick_wins": [<3 strings — small changes that immediately boost ATS score>],
+ 
+  "critical_issues": [<3 strings — deal-breaker problems recruiters will notice first>],
+ 
+  "missing_sections": [<list of strings for important sections absent from resume, e.g. "LinkedIn URL", "GitHub link", "Certifications", "Summary", empty list if none>],
+ 
+  "rewrites": {{
+    "experience": [<2 improved bullet strings>],
+    "frontend":   [<2 improved bullet strings>],
+    "project":    [<2 improved bullet strings>]
+  }},
+ 
+  "improved_summary": "<a polished 2-3 sentence professional summary with strong action language, rewritten from the existing one or generated if missing>",
+ 
+  "ats_keywords": {{
+    "found":   [<keywords already present in resume>],
+    "missing": [<10-15 high-value ATS keywords the candidate should add based on their role/domain>]
+  }},
+ 
+  "skill_suggestions": {{
+    "add":    [<5-8 in-demand skills to add based on candidate's role and tech stack>],
+    "remove": [<skills that are outdated or redundant and should be dropped, empty list if none>],
+    "reorder": "<advice on how to reorder skills for maximum ATS impact>"
+  }},
+ 
+  "experience_tips": [<3-4 strings — specific advice on improving each experience bullet, quantifying impact, adding metrics>],
+ 
+  "career_level": "<one of: Junior | Mid-level | Senior | Lead | Executive — inferred from experience>",
+ 
+  "target_roles": [<3-5 job titles this candidate is best suited for based on their skills and experience>],
+ 
+  "industry_fit": [<2-3 industries where this profile is most competitive>],
+ 
+  "action_verbs": {{
+    "current":  [<action verbs already used in the resume>],
+    "suggested": [<8-10 stronger action verbs suited to this candidate's role that they should use>]
+  }},
+ 
+  "linkedin_tips": [<2-3 strings — suggestions for optimizing LinkedIn profile based on resume content>],
+ 
+  "cover_letter_hook": "<a compelling 1-2 sentence opening for a cover letter tailored to this candidate's strongest selling points>",
+ 
+  "form_data": {{
+    "name":     "<full name>",
+    "email":    "<email address>",
+    "phone":    "<phone number>",
+    "location": "<city, country>",
+    "linkedin": "<LinkedIn URL if present, else empty string>",
+    "github":   "<GitHub URL if present, else empty string>",
+    "portfolio":"<portfolio/website URL if present, else empty string>",
+    "summary":  "<professional summary 2-3 sentences>",
+    "skills":   [<list of skill strings>],
+    "experience": [
+      {{
+        "title":       "<job title>",
+        "company":     "<company name>",
+        "duration":    "<e.g. Jan 2021 - Present>",
+        "description": "<key responsibilities and achievements>"
       }}
-    }}
-
-    Rules:
-    - Extract ALL data from the resume accurately
-    - If a field is missing from resume, use empty string "" or empty list []
-    - Do NOT return any text outside the JSON object
-    - Return clean, valid JSON only
-
-    Resume:
-    {resume_text}
-    """
+    ],
+    "education": [
+      {{
+        "degree":      "<degree name>",
+        "institution": "<university/college name>",
+        "year":        "<graduation year>"
+      }}
+    ],
+    "projects": [
+      {{
+        "name":         "<project name>",
+        "description":  "<what it does>",
+        "technologies": "<tech stack used>",
+        "link":         "<live link or GitHub URL if present, else empty string>"
+      }}
+    ],
+    "certifications": [<list of certification strings, empty list if none>],
+    "languages":      [<spoken/written languages if mentioned, empty list if none>],
+    "achievements":   [<notable awards, publications, or achievements if mentioned, empty list if none>]
+  }}
+}}
+ 
+Rules:
+- Extract ALL data from the resume accurately; never hallucinate facts
+- If a field is missing from the resume, use empty string "" or empty list []
+- score_breakdown scores must average close to the top-level score
+- missing_sections must only list sections truly absent from the resume
+- ats_keywords.found must only contain keywords actually present in the resume text
+- Do NOT return any text outside the JSON object
+- Return clean, valid JSON only — no markdown, no code fences, no explanations
+ 
+Resume:
+{resume_text}
+"""
 
     payload = {
         "model": GROQ_MODEL,
@@ -297,6 +431,7 @@ async def analyze_resume(
 
     #     # 🔥 Use helper
     parsed_output = await call_groq_api(payload)
+    print("Parsed output from AI:", parsed_output)
 
     # ── Directly call DB save — no HTTP self-call needed ─────────────────────
     try:
@@ -337,6 +472,8 @@ def get_my_resumes(
                 joinedload(Ai_Resume.projects),
                 joinedload(Ai_Resume.certifications),
                 joinedload(Ai_Resume.improvement),
+                joinedload(Ai_Resume.languages),
+                joinedload(Ai_Resume.achievements),
             )
             .filter(Ai_Resume.client_id == current_user_id)
             .all()
@@ -367,7 +504,7 @@ def get_my_resumes(
 # ─── GET /ai_resumes/{resume_id} ─────────────────────────────────────────────
 
 
-@ai_resume_router.get("/{resume_id}", response_model=ResumeOut)
+@ai_resume_router.get("/{resume_id}")
 def get_resume(
     resume_id: int,
     db: Session = Depends(get_db),
@@ -468,6 +605,20 @@ def update_resume(
                 if c.name:
                     db.add(Ai_Certification(resume_id=resume_id, name=c.name))
 
+        if payload.languages is not None:
+            db.query(Ai_Languages).filter(Ai_Languages.resume_id == resume_id).delete()
+            for l in payload.languages:
+                if l:
+                    db.add(Ai_Languages(resume_id=resume_id, name=l))
+
+        if payload.achievements is not None:
+            db.query(Ai_Achievements).filter(
+                Ai_Achievements.resume_id == resume_id
+            ).delete()
+            for a in payload.achievements:
+                if a:
+                    db.add(Ai_Achievements(resume_id=resume_id, name=a))
+
         db.commit()
 
         return {"id": resume.id, "message": "Resume updated successfully"}
@@ -477,6 +628,7 @@ def update_resume(
         raise
 
     except Exception as e:
+        print("Resume Update Error:", e)
         db.rollback()  # 🔥 VERY IMPORTANT
         # logger.error(f"Error updating resume: {str(e)}")
 

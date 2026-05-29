@@ -40,10 +40,21 @@ class Palette:
     BLUE_LIGHT = colors.HexColor("#dbeafe")
     BLUE_BORDER = colors.HexColor("#93c5fd")
     SLATE_50 = colors.HexColor("#f8fafc")
+    SLATE_100 = colors.HexColor("#f1f5f9")
     SLATE_200 = colors.HexColor("#e2e8f0")
     SLATE_400 = colors.HexColor("#94a3b8")
     SLATE_600 = colors.HexColor("#475569")
     SLATE_800 = colors.HexColor("#1e293b")
+    # Modern template
+    AMBER = colors.HexColor("#f59e0b")
+    AMBER_LIGHT = colors.HexColor("#fef3c7")
+    GRAY_100 = colors.HexColor("#f3f4f6")
+    GRAY_500 = colors.HexColor("#6b7280")
+    GRAY_700 = colors.HexColor("#374151")
+    GRAY_800 = colors.HexColor("#1f2937")
+    # Minimal template
+    EMERALD = colors.HexColor("#10b981")
+    EMERALD_LIGHT = colors.HexColor("#d1fae5")
 
 
 # ─────────────────────────────────────────────────────────────
@@ -149,7 +160,29 @@ def build_classic_pdf(d) -> bytes:
         sidebar_story.append(Paragraph(e.year, meta_s))
         sidebar_story.append(Spacer(1, 8))
 
-    # ── Main Content ─────────────────────────────────────────
+    # ── Certifications ───────────────────────────────────────
+    if d.certifications:
+        sidebar_story.append(Spacer(1, 6))
+        sidebar_story.append(Paragraph("CERTIFICATIONS", sec))
+        sidebar_story.append(
+            HRFlowable(width="100%", thickness=1.2, color=Palette.NAVY)
+        )
+        sidebar_story.append(Spacer(1, 6))
+        for cert in d.certifications:
+            sidebar_story.append(Paragraph(f"\u2022 {cert}", body_s))
+            sidebar_story.append(Spacer(1, 3))
+
+    # ── Languages ────────────────────────────────────────────
+    if d.languages:
+        sidebar_story.append(Spacer(1, 6))
+        sidebar_story.append(Paragraph("LANGUAGES", sec))
+        sidebar_story.append(
+            HRFlowable(width="100%", thickness=1.2, color=Palette.NAVY)
+        )
+        sidebar_story.append(Spacer(1, 6))
+        for lang in d.languages:
+            sidebar_story.append(Paragraph(lang, chip_s))
+            sidebar_story.append(Spacer(1, 4))
     main_story = []
 
     main_story.append(Paragraph("PROFILE", sec_main))
@@ -187,7 +220,17 @@ def build_classic_pdf(d) -> bytes:
         ]
         main_story.append(KeepTogether(block))
 
-    # ── Frames ───────────────────────────────────────────────
+    # ── Achievements ─────────────────────────────────────────
+    if d.achievements:
+        main_story.append(Paragraph("ACHIEVEMENTS", sec_main))
+        main_story.append(HRFlowable(width="100%", thickness=1.2, color=Palette.BLUE))
+        main_story.append(Spacer(1, 6))
+        for ach in d.achievements:
+            block = [
+                Paragraph(f"\u2022 {ach}", body_s),
+                Spacer(1, 4),
+            ]
+            main_story.append(KeepTogether(block))
     sidebar_frame = Frame(
         MARGIN,
         MARGIN,
@@ -299,6 +342,28 @@ def _build_classic_simple(d: ResumeData, buf: io.BytesIO):
         sidebar.append(Paragraph(e.year, s_meta))
         sidebar.append(Spacer(1, 7))
 
+    # Certifications
+    if d.certifications:
+        sidebar.append(Spacer(1, 6))
+        sidebar.append(Paragraph("CERTIFICATIONS", s_sec))
+        sidebar.append(
+            HRFlowable(width="100%", thickness=1.5, color=Palette.NAVY, spaceAfter=5)
+        )
+        for cert in d.certifications:
+            sidebar.append(Paragraph(f"\u2022 {cert}", s_body))
+            sidebar.append(Spacer(1, 3))
+
+    # Languages
+    if d.languages:
+        sidebar.append(Spacer(1, 6))
+        sidebar.append(Paragraph("LANGUAGES", s_sec))
+        sidebar.append(
+            HRFlowable(width="100%", thickness=1.5, color=Palette.NAVY, spaceAfter=5)
+        )
+        for lang in d.languages:
+            sidebar.append(Paragraph(f"\u2022 {lang}", s_skill))
+            sidebar.append(Spacer(1, 3))
+
     # ── Main ───────────────────────────────────────────────────────────────────
     main = []
     main.append(Paragraph("PROFILE", s_sec_m))
@@ -334,6 +399,16 @@ def _build_classic_simple(d: ResumeData, buf: io.BytesIO):
             )
         )
         main.append(Spacer(1, 8))
+
+    # Achievements
+    if d.achievements:
+        main.append(Paragraph("ACHIEVEMENTS", s_sec_m))
+        main.append(
+            HRFlowable(width="100%", thickness=1.5, color=Palette.BLUE, spaceAfter=5)
+        )
+        for ach in d.achievements:
+            main.append(Paragraph(f"\u2022 {ach}", s_body))
+            main.append(Spacer(1, 4))
 
     # ── Header row ─────────────────────────────────────────────────────────────
     contact = _contact_str(d)
@@ -497,6 +572,28 @@ def build_modern_pdf(d: ResumeData) -> bytes:
         right.append(Paragraph(e.year, s_dur))
         right.append(Spacer(1, 7))
 
+    # Certifications
+    if d.certifications:
+        right.append(Spacer(1, 6))
+        right.append(Paragraph("CERTIFICATIONS", s_sec))
+        right.append(
+            HRFlowable(width="100%", thickness=1.5, color=Palette.AMBER, spaceAfter=5)
+        )
+        for cert in d.certifications:
+            right.append(Paragraph(f"\u2022 {cert}", s_other))
+            right.append(Spacer(1, 3))
+
+    # Languages
+    if d.languages:
+        right.append(Spacer(1, 6))
+        right.append(Paragraph("LANGUAGES", s_sec))
+        right.append(
+            HRFlowable(width="100%", thickness=1.5, color=Palette.AMBER, spaceAfter=5)
+        )
+        for lang in d.languages:
+            right.append(Paragraph(f"\u2022 {lang}", s_other))
+            right.append(Spacer(1, 3))
+
     # Left column
     left = []
     left.append(Paragraph("EXPERIENCE", s_sec))
@@ -524,6 +621,16 @@ def build_modern_pdf(d: ResumeData) -> bytes:
             )
         )
         left.append(Spacer(1, 8))
+
+    # Achievements
+    if d.achievements:
+        left.append(Paragraph("ACHIEVEMENTS", s_sec))
+        left.append(
+            HRFlowable(width="100%", thickness=1.5, color=Palette.AMBER, spaceAfter=5)
+        )
+        for ach in d.achievements:
+            left.append(Paragraph(f"\u2022 {ach}", s_body))
+            left.append(Spacer(1, 4))
 
     # Header
     contact_parts = [x for x in [d.email, d.phone, d.location] if x]

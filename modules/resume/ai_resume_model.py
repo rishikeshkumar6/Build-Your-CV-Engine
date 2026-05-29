@@ -48,6 +48,12 @@ class Ai_Resume(Base):
         cascade="all, delete-orphan",
         uselist=False,
     )
+    languages = relationship(
+        "Ai_Languages", back_populates="resume", cascade="all, delete-orphan"
+    )
+    achievements = relationship(
+        "Ai_Achievements", back_populates="resume", cascade="all, delete-orphan"
+    )
 
 
 class Ai_Skill(Base):
@@ -117,6 +123,30 @@ class Ai_Certification(Base):
     resume = relationship("Ai_Resume", back_populates="certifications")
 
 
+class Ai_Languages(Base):
+    __tablename__ = "ai_languages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    resume_id = Column(
+        Integer, ForeignKey("ai_resumes.id", ondelete="CASCADE"), nullable=False
+    )
+    name = Column(String(255), nullable=True)
+
+    resume = relationship("Ai_Resume", back_populates="languages")
+
+
+class Ai_Achievements(Base):
+    __tablename__ = "ai_achievements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    resume_id = Column(
+        Integer, ForeignKey("ai_resumes.id", ondelete="CASCADE"), nullable=False
+    )
+    name = Column(String(255), nullable=True)
+
+    resume = relationship("Ai_Resume", back_populates="achievements")
+
+
 class Ai_Improvement(Base):
     """Stores AI-generated improvement feedback for a resume (one-to-one with Ai_Resume)."""
 
@@ -130,10 +160,21 @@ class Ai_Improvement(Base):
         unique=True,
     )
     score = Column(Float, nullable=True)
-    strengths = Column(JSON, nullable=True)  # list[str]
-    improvements = Column(JSON, nullable=True)  # list[str]
-    rewrites = Column(
-        JSON, nullable=True
-    )  # dict with keys: experience, frontend, project
+    career_level = Column(Text, nullable=True)  # ✅ fixed
+    cover_letter_hook = Column(Text, nullable=True)  # ✅ fixed
+    strengths = Column(JSON, nullable=True)
+    improvements = Column(JSON, nullable=True)
+    rewrites = Column(JSON, nullable=True)
+    score_breakdown = Column(JSON, nullable=True)  # ✅ fixed
+    critical_issues = Column(JSON, nullable=True)  # ✅ fixed
+    missing_sections = Column(JSON, nullable=True)  # ✅ fixed
+    improved_summary = Column(Text, nullable=True)  # ✅ fixed
+    ats_keywords = Column(JSON, nullable=True)  # ✅ fixed
+    skill_suggestions = Column(JSON, nullable=True)  # ✅ fixed
+    experience_tips = Column(JSON, nullable=True)  # ✅ fixed
+    target_roles = Column(JSON, nullable=True)  # ✅ fixed
+    industry_fit = Column(JSON, nullable=True)  # ✅ fixed
+    action_verbs = Column(JSON, nullable=True)  # ✅ fixed
+    linkedin_tips = Column(JSON, nullable=True)  # ✅ fixed
 
     resume = relationship("Ai_Resume", back_populates="improvement")
